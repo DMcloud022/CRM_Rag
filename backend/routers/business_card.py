@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any
 from models.lead import Lead
 from services.image_processing import transcribe_business_card
 from services.public_data import gather_public_data, summarize_public_data
+import logging
 
 router = APIRouter()
 
@@ -13,7 +14,7 @@ class BusinessCardScanResponse(BaseModel):
     message: str
 
 class PublicDataRequest(BaseModel):
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     linkedin_profile: Optional[str] = None
 
 async def get_api_key(api_key: str = Header(...)):
@@ -28,10 +29,15 @@ async def scan_business_card(
 ):
     try:
         transcription_result = await transcribe_business_card(image)
+        
+        if "error" in transcription_result:
+            raise HTTPException(status_code=500, detail=transcription_result["error"])
+        
         cleaned_data = clean_and_validate_transcription(transcription_result)
         
-        public_data = transcription_result.get('public_data', {})
-        public_data_summary = await summarize_public_data(public_data)
+        # Gather public data based on email from transcription
+        public_data = await gather_public_data(cleaned_data.get("email"), None)
+        public_data_summary = public_data.get("combined_summary", "No public data available")
         
         lead = create_lead(cleaned_data, public_data)
         
@@ -44,6 +50,7 @@ async def scan_business_card(
     except HTTPException as he:
         raise he
     except Exception as e:
+        logging.error(f"Error in scan_business_card: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing business card: {str(e)}")
 
 @router.post("/gather-public-data")
@@ -81,8 +88,13 @@ def clean_and_validate_transcription(transcription: Dict[str, Any]) -> Dict[str,
     email = transcription.get("email", "").strip()
     if email:
         try:
-            cleaned_data["email"] = EmailStr.validate(email)
-        except ValueError:
+            # Use a simple regex for basic email validation
+            import re
+            if re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                cleaned_data["email"] = email
+            else:
+                cleaned_data["email"] = None
+        except Exception:
             cleaned_data["email"] = None
     else:
         cleaned_data["email"] = None
@@ -109,4 +121,5 @@ def create_lead(cleaned_data: Dict[str, Any], public_data: Dict[str, Any]) -> Le
             public_data=public_data
         )
     except ValueError as ve:
+        logging.error(f"Invalid lead data: {str(ve)}")
         raise HTTPException(status_code=422, detail=f"Invalid lead data: {str(ve)}")
