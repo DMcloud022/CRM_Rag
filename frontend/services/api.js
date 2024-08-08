@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as FileSystem from 'expo-file-system';
 
-const API_BASE_URL = 'http://your-backend-url:8000';
+const API_BASE_URL = 'http://localhost:8000';
 
 export const scanBusinessCard = async (imageUri) => {
   try {

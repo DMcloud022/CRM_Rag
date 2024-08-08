@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # General settings
-SUPPORTED_CRMS = ['salesforce', 'hubspot', 'zoho']  # Add all supported CRMs
+SUPPORTED_CRMS = ['salesforce', 'hubspot', 'zoho', 'dynamic']  # Add all supported CRMs
 MAX_REQUESTS_PER_MINUTE = 60
 
 # API keys
@@ -39,6 +39,7 @@ HUBSPOT_REDIRECT_URI = os.getenv("HUBSPOT_REDIRECT_URI")
 DYNAMICS_CLIENT_ID = os.getenv("DYNAMICS_CLIENT_ID")
 DYNAMICS_CLIENT_SECRET = os.getenv("DYNAMICS_CLIENT_SECRET")
 DYNAMICS_REDIRECT_URI = os.getenv("DYNAMICS_REDIRECT_URI")
+DYNAMICS_TENANT_ID = os.getenv("DYNAMICS_TENANT_ID")
 
 # Environment-specific settings
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")

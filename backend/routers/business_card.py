@@ -1,10 +1,11 @@
+import logging
+import re
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Header
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, HttpUrl
 from typing import Optional, Dict, Any
 from models.lead import Lead
 from services.image_processing import transcribe_business_card
 from services.public_data import gather_public_data, summarize_public_data
-import logging
 
 router = APIRouter()
 
@@ -14,11 +15,11 @@ class BusinessCardScanResponse(BaseModel):
     message: str
 
 class PublicDataRequest(BaseModel):
-    email: Optional[str] = None
-    linkedin_profile: Optional[str] = None
+    email: Optional[EmailStr] = None
+    linkedin_profile: Optional[HttpUrl] = None
 
-async def get_api_key(api_key: str = Header(...)):
-    expected_api_key = "test"
+async def get_api_key(api_key: str = Header(..., description="API Key for authentication")):
+    expected_api_key = "test"  # In production, use a secure method to store and retrieve API keys
     if api_key != expected_api_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
@@ -26,7 +27,7 @@ async def get_api_key(api_key: str = Header(...)):
 async def scan_business_card(
     image: UploadFile = File(...),
     api_key: str = Depends(get_api_key)
-):
+) -> BusinessCardScanResponse:
     try:
         transcription_result = await transcribe_business_card(image)
         
@@ -34,11 +35,8 @@ async def scan_business_card(
             raise HTTPException(status_code=500, detail=transcription_result["error"])
         
         cleaned_data = clean_and_validate_transcription(transcription_result)
-        
-        # Gather public data based on email from transcription
-        public_data = await gather_public_data(cleaned_data.get("email"), None)
-        public_data_summary = public_data.get("combined_summary", "No public data available")
-        
+        public_data = await gather_public_data(cleaned_data.get("email"), cleaned_data.get("linkedin_profile"))
+        public_data_summary = await summarize_public_data(public_data)
         lead = create_lead(cleaned_data, public_data)
         
         return BusinessCardScanResponse(
@@ -53,7 +51,7 @@ async def scan_business_card(
         logging.error(f"Error in scan_business_card: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing business card: {str(e)}")
 
-@router.post("/gather-public-data")
+@router.post("/gather-public-data", response_model=Dict[str, Any])
 async def gather_public_data_route(
     request: PublicDataRequest,
     api_key: str = Depends(get_api_key)
@@ -67,44 +65,36 @@ async def gather_public_data_route(
             "summary": summary
         }
     except Exception as e:
+        logging.error(f"Error in gather_public_data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error gathering and summarizing public data: {str(e)}")
 
 def clean_and_validate_transcription(transcription: Dict[str, Any]) -> Dict[str, Any]:
-    cleaned_data = {}
-    
+    cleaned_data = {
+        "first_name": "Unknown",
+        "last_name": "",
+        "email": None,
+    }
+
     # Handle 'name' field
     name = transcription.get("name", "").strip()
     if name:
         name_parts = name.split(maxsplit=1)
         cleaned_data["first_name"] = name_parts[0]
         cleaned_data["last_name"] = name_parts[1] if len(name_parts) > 1 else ""
-    else:
-        cleaned_data["first_name"] = "Unknown"
-        cleaned_data["last_name"] = ""
-    
+
     cleaned_data["name"] = f"{cleaned_data['first_name']} {cleaned_data['last_name']}".strip()
-    
+
     # Handle 'email' field with validation
     email = transcription.get("email", "").strip()
-    if email:
-        try:
-            # Use a simple regex for basic email validation
-            import re
-            if re.match(r"[^@]+@[^@]+\.[^@]+", email):
-                cleaned_data["email"] = email
-            else:
-                cleaned_data["email"] = None
-        except Exception:
-            cleaned_data["email"] = None
-    else:
-        cleaned_data["email"] = None
+    if email and re.match(r"[^@]+@[^@]+\.[^@]+", email):
+        cleaned_data["email"] = email
 
     # Handle other fields
     for field in ["phone", "company", "address", "job_title", "linkedin_profile", "website"]:
         value = transcription.get(field, "").strip()
         if value:
             cleaned_data[field] = value
-    
+
     return cleaned_data
 
 def create_lead(cleaned_data: Dict[str, Any], public_data: Dict[str, Any]) -> Lead:
@@ -115,8 +105,6 @@ def create_lead(cleaned_data: Dict[str, Any], public_data: Dict[str, Any]) -> Le
             phone=cleaned_data.get("phone"),
             company=cleaned_data.get("company"),
             position=cleaned_data.get("job_title"),
-            website=cleaned_data.get("website"),
-            address=cleaned_data.get("address"),
             linkedin_profile=cleaned_data.get("linkedin_profile"),
             public_data=public_data
         )
