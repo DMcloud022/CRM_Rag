@@ -29,14 +29,23 @@ async def scan_business_card(
     api_key: str = Depends(get_api_key)
 ) -> BusinessCardScanResponse:
     try:
+        logging.info("Starting business card scan")
         transcription_result = await transcribe_business_card(image)
         
         if "error" in transcription_result:
+            logging.error(f"Transcription error: {transcription_result['error']}")
             raise HTTPException(status_code=500, detail=transcription_result["error"])
         
+        logging.info("Transcription successful, cleaning data")
         cleaned_data = clean_and_validate_transcription(transcription_result)
+        
+        logging.info("Gathering public data")
         public_data = await gather_public_data(cleaned_data.get("email"), cleaned_data.get("linkedin_profile"))
+        
+        logging.info("Summarizing public data")
         public_data_summary = await summarize_public_data(public_data)
+        
+        logging.info("Creating lead")
         lead = create_lead(cleaned_data, public_data)
         
         return BusinessCardScanResponse(
@@ -46,9 +55,10 @@ async def scan_business_card(
         )
 
     except HTTPException as he:
+        logging.error(f"HTTP Exception: {str(he)}")
         raise he
     except Exception as e:
-        logging.error(f"Error in scan_business_card: {str(e)}")
+        logging.error(f"Error in scan_business_card: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error processing business card: {str(e)}")
 
 @router.post("/gather-public-data", response_model=Dict[str, Any])

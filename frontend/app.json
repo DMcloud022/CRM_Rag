@@ -12,6 +12,19 @@
       "url": "https://u.expo.dev/f15e870b-fff5-4cfe-b6ab-15f7a72f511a"
     },
     "android": {},
-    "ios": {}
+    "ios": {},
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(CRM_RAG) to access your camera",
+          "microphonePermission": "Allow $(CRM_RAG) to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ]
+    ]
   }
 }
+
+
+

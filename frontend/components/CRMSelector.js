@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, StyleSheet } from 'react-native';
+import { View, TextInput, StyleSheet, TouchableOpacity, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function LeadForm({ route, navigation }) {
   const { lead } = route.params;
@@ -13,53 +14,88 @@ export default function LeadForm({ route, navigation }) {
     navigation.navigate('CRMSelector', { lead: formData });
   };
 
-  return (
-    <View style={styles.container}>
+  const renderInput = (key, placeholder, icon) => (
+    <View style={styles.inputContainer}>
+      <Ionicons name={icon} size={24} color="#007AFF" style={styles.icon} />
       <TextInput
         style={styles.input}
-        value={formData.name}
-        onChangeText={(text) => handleChange('name', text)}
-        placeholder="Name"
+        value={formData[key]}
+        onChangeText={(text) => handleChange(key, text)}
+        placeholder={placeholder}
+        placeholderTextColor="#999"
       />
-      <TextInput
-        style={styles.input}
-        value={formData.email}
-        onChangeText={(text) => handleChange('email', text)}
-        placeholder="Email"
-      />
-      <TextInput
-        style={styles.input}
-        value={formData.phone}
-        onChangeText={(text) => handleChange('phone', text)}
-        placeholder="Phone"
-      />
-      <TextInput
-        style={styles.input}
-        value={formData.company}
-        onChangeText={(text) => handleChange('company', text)}
-        placeholder="Company"
-      />
-      <TextInput
-        style={styles.input}
-        value={formData.position}
-        onChangeText={(text) => handleChange('position', text)}
-        placeholder="Position"
-      />
-      <Button title="Submit" onPress={handleSubmit} />
     </View>
+  );
+
+  return (
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <Text style={styles.title}>Lead Information</Text>
+        {renderInput('name', 'Name', 'person')}
+        {renderInput('email', 'Email', 'mail')}
+        {renderInput('phone', 'Phone', 'call')}
+        {renderInput('company', 'Company', 'business')}
+        {renderInput('position', 'Position', 'briefcase')}
+        <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+          <Text style={styles.buttonText}>Submit</Text>
+          <Ionicons name="arrow-forward" size={24} color="white" />
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  scrollContainer: {
     padding: 20,
   },
-  input: {
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    marginBottom: 10,
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    marginBottom: 15,
     paddingHorizontal: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  icon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginRight: 10,
   },
 });

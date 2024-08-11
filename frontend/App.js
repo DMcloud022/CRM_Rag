@@ -10,12 +10,41 @@ const Stack = createStackNavigator();
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen name="Scanner" component={BusinessCardScanner} />
-        <Stack.Screen name="LeadForm" component={LeadForm} />
-        <Stack.Screen name="CRMSelector" component={CRMSelector} />
-        <Stack.Screen name="OAuthCallback" component={OAuthCallback} />
+    <NavigationContainer
+      fallback={<Text>Loading...</Text>}
+      onError={(error) => console.error('Navigation error:', error)}
+    >
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#f4511e',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }}
+      >
+        <Stack.Screen 
+          name="Scanner" 
+          component={BusinessCardScanner} 
+          options={{ title: 'Business Card Scanner' }}
+        />
+        <Stack.Screen 
+          name="LeadForm" 
+          component={LeadForm} 
+          options={{ title: 'Lead Information' }}
+        />
+        <Stack.Screen 
+          name="CRMSelector" 
+          component={CRMSelector} 
+          options={{ title: 'Select CRM' }}
+        />
+        <Stack.Screen 
+          name="OAuthCallback" 
+          component={OAuthCallback} 
+          options={{ title: 'CRM Authorization' }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

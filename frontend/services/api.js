@@ -1,8 +1,29 @@
 import axios from 'axios';
 import * as FileSystem from 'expo-file-system';
-import * as Logger from './logger';
+import { Platform } from 'react-native';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
+const API_KEY = process.env.API_KEY;
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': API_KEY,
+  },
+});
+
+const handleApiError = (error, customMessage) => {
+  console.error(customMessage, error);
+  if (error.response) {
+    throw new Error(`${customMessage}: ${error.response.data.message || error.response.statusText}`);
+  } else if (error.request) {
+    throw new Error(`${customMessage}: No response received from server`);
+  } else {
+    throw new Error(`${customMessage}: ${error.message}`);
+  }
+};
 
 export const scanBusinessCard = async (imageUri) => {
   try {
@@ -10,43 +31,37 @@ export const scanBusinessCard = async (imageUri) => {
     const fileInfo = await FileSystem.getInfoAsync(imageUri);
 
     formData.append('image', {
-      uri: imageUri,
+      uri: Platform.OS === 'ios' ? imageUri.replace('file://', '') : imageUri,
       type: 'image/jpeg',
       name: 'business_card.jpg',
-      size: fileInfo.size,
     });
 
-    const response = await axios.post(`${API_BASE_URL}/scan-business-card`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data', 'X-API-Key': process.env.API_KEY },
+    const response = await api.post('/scan-business-card', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
 
     return response.data;
   } catch (error) {
-    Logger.error('Error scanning business card:', error);
-    throw error;
+    handleApiError(error, 'Error scanning business card');
   }
 };
 
 export const sendLeadToCRM = async (crmName, lead, code = null) => {
   try {
-    const url = `${API_BASE_URL}/send-to-crm/${crmName}`;
-    const headers = code ? { Authorization: `Bearer ${code}` } : { 'X-API-Key': process.env.API_KEY };
-    const response = await axios.post(url, lead, { headers });
+    const url = `/send-to-crm/${crmName}`;
+    const headers = code ? { Authorization: `Bearer ${code}` } : {};
+    const response = await api.post(url, lead, { headers });
     return response.data;
   } catch (error) {
-    Logger.error(`Error sending lead to ${crmName}:`, error);
-    throw error;
+    handleApiError(error, `Error sending lead to ${crmName}`);
   }
 };
 
 export const initiateCRMOAuth = async (crmName) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/oauth/${crmName}/initiate`, {
-      headers: { 'X-API-Key': process.env.API_KEY },
-    });
+    const response = await api.get(`/oauth/${crmName}/initiate`);
     return response.data.authUrl;
   } catch (error) {
-    Logger.error(`Error initiating OAuth for ${crmName}:`, error);
-    throw error;
+    handleApiError(error, `Error initiating OAuth for ${crmName}`);
   }
 };
