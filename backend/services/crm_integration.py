@@ -32,9 +32,9 @@ oauth_initiation_funcs: Dict[str, Callable[[], str]] = {
 
 oauth_exchange_funcs: Dict[str, Callable[[str], OAuthCredentials]] = {
     "zoho": exchange_zoho_code_for_token,
-    "hubspot": initiate_hubspot_oauth,
-    "salesforce": initiate_salesforce_oauth,
-    "dynamics": initiate_dynamics_oauth,
+    "hubspot": exchange_hubspot_code_for_token,
+    "salesforce": exchange_salesforce_code_for_token,
+    "dynamics": exchange_dynamics_code_for_token,
     # Add other OAuth exchange functions here
 }
 
