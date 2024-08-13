@@ -1,7 +1,8 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Body
 from fastapi.responses import JSONResponse, RedirectResponse
 from services.crm_integration import send_lead_to_crm, initiate_oauth, exchange_code_for_token
+from services.crm_integration.zoho import send_to_zoho
 from models.lead import Lead
 from models.oauth import OAuthCredentials
 from utils.oauth import get_oauth_credentials, store_oauth_credentials
@@ -9,6 +10,7 @@ from utils.rate_limiter import rate_limit
 from config import SUPPORTED_CRMS, MAX_REQUESTS_PER_MINUTE
 from starlette.background import BackgroundTask
 import httpx
+import aiohttp
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -106,4 +108,94 @@ async def oauth_callback(
         raise HTTPException(status_code=400 if isinstance(e, ValueError) else 503, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error exchanging code for token for {crm_name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+    
+HUBSPOT_API_BASE_URL = "https://api.hubapi.com"
+
+async def create_lead_in_hubspot(lead: Lead, access_token: str) -> dict:
+    url = f"{HUBSPOT_API_BASE_URL}/crm/v3/objects/contacts"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    properties = {
+        "firstname": lead.name.split()[0] if lead.name else "",
+        "lastname": lead.name.split()[-1] if lead.name and len(lead.name.split()) > 1 else "",
+        "email": lead.email,
+        "phone": lead.phone,
+        "company": lead.company,
+        "jobtitle": lead.position,
+    }
+    data = {"properties": properties}
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=data) as response:
+            if response.status == 201:
+                return await response.json()
+            else:
+                error_detail = await response.text()
+                logger.error(f"HubSpot API error: {response.status} - {error_detail}")
+                raise HTTPException(status_code=response.status, detail=f"HubSpot API error: {error_detail}")
+
+@router.post("/create-hubspot-lead")
+@rate_limit(MAX_REQUESTS_PER_MINUTE)
+async def create_hubspot_lead(
+    lead: Lead = Body(..., description="The lead to send to HubSpot"),
+    access_token: str = Query(..., description="OAuth access token for HubSpot authentication")
+):
+    try:
+        if not lead.email:
+            raise ValueError("Email is required for the lead")
+
+        logger.info(f"Attempting to create lead in HubSpot: {lead.email}")
+        result = await create_lead_in_hubspot(lead, access_token)
+        
+        logger.info(f"Successfully created lead in HubSpot: {result.get('id', 'N/A')}")
+        return JSONResponse(
+            content={
+                "message": "Successfully created lead in HubSpot",
+                "hubspot_response": result,
+                "lead_details": lead.dict()
+            },
+            status_code=201
+        )
+
+    except ValueError as ve:
+        logger.error(f"Validation error: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Unexpected error creating lead in HubSpot: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+    
+    
+@router.post("/create-zoho-lead")
+async def create_zoho_lead(
+    lead: Lead = Body(..., description="The lead to send to Zoho CRM"),
+    access_token: str = Query(..., description="OAuth access token for Zoho CRM authentication")
+):
+    try:
+        if not lead.email:
+            raise ValueError("Email is required for the lead")
+
+        logger.info(f"Attempting to create lead in Zoho CRM: {lead.email}")
+        
+        credentials = OAuthCredentials(access_token=access_token)
+        result = await send_to_zoho(lead, credentials)
+        
+        logger.info(f"Successfully created lead in Zoho CRM: {result}")
+        return {
+            "message": "Successfully created lead in Zoho CRM",
+            "zoho_response": result,
+            "lead_details": lead.dict()
+        }
+
+    except ValueError as ve:
+        logger.error(f"Validation error: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Unexpected error creating lead in Zoho CRM: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
