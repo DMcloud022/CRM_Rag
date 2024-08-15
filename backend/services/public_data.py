@@ -4,26 +4,19 @@ from typing import Optional, Dict, Any
 from config import SERPER_API_KEY, PERPLEXITY_API_KEY, OPENAI_API_KEY
 import json
 from openai import AsyncOpenAI
+from models.lead import Lead, PublicData, WorkExperience, Education
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-async def gather_public_data(email: Optional[str], linkedin_profile: Optional[str]) -> Dict[str, Any]:
+async def gather_public_data(email: Optional[str]) -> Dict[str, Any]:
     public_data = {
         "serper_data": {},
         "perplexity_data": {},
-        "combined_summary": "",
     }
     
     if email:
-        serper_data = await search_email_data(email)
-        perplexity_data = await search_perplexity_data(email)
-        
-        # Ensure we handle cases where `search_email_data` might return an error or empty response
-        public_data["serper_data"] = serper_data if isinstance(serper_data, dict) else {}
-        public_data["perplexity_data"] = perplexity_data if isinstance(perplexity_data, dict) else {}
-        
-        # Generate summary if we have data
-        public_data["combined_summary"] = await summarize_public_data(public_data)
+        public_data["serper_data"] = await search_email_data(email)
+        public_data["perplexity_data"] = await search_perplexity_data(email)
     
     return public_data
 
@@ -87,29 +80,28 @@ def clean_data(data: Dict[str, Any]) -> Dict[str, Any]:
     else:
         return data
 
-async def summarize_public_data(data: Dict[str, Any]) -> str:
-    # Ensure that we are accessing keys safely
-    serper_data = data.get("serper_data", {})
-    perplexity_data = data.get("perplexity_data", {})
-    
-    if not serper_data and not perplexity_data:
-        return "No public data available"
-
+async def structure_public_data(serper_data: Dict[str, Any], perplexity_data: Dict[str, Any]) -> PublicData:
     combined_data = json.dumps({
         "serper_data": serper_data,
         "perplexity_data": perplexity_data
-    }, indent=2)
+    })
 
     prompt = f"""
-    Summarize the following public data into a comprehensive yet concise and structured summary of 3-4 sentences only. 
-    This data includes information from both Serper and Perplexity APIs.
+    Analyze the following public data and structure it according to the PublicData model:
 
-    Create a well-structured and easily readable summary that provides a complete overview of the professional's public data.
-
-    Public Data:
     {combined_data}
 
-    Please provide a structured summary of this data, highlighting the most important and reliable information.
+    Extract and structure the following information:
+    1. Bio
+    2. Skills
+    3. Languages
+    4. Interests
+    5. Publications
+    6. Awards
+    7. Work Experience (list of companies, positions, start dates, end dates)
+    8. Education (list of institutions, degrees, fields of study, graduation years)
+
+    Provide the structured data in JSON format.
     """
 
     try:
@@ -122,7 +114,13 @@ async def summarize_public_data(data: Dict[str, Any]) -> str:
                 }
             ],
         )
-        return response.choices[0].message.content.strip()
+        structured_data = json.loads(response.choices[0].message.content)
+        return PublicData(**structured_data)
     except Exception as e:
-        print(f"Error summarizing public data: {e}")
-        return "Error: Unable to summarize public data"
+        print(f"Error structuring public data: {e}")
+        return PublicData()
+
+async def enrich_lead_with_public_data(lead: Lead, public_data: Dict[str, Any]) -> Lead:
+    structured_data = await structure_public_data(public_data["serper_data"], public_data["perplexity_data"])
+    lead.public_data = structured_data
+    return lead

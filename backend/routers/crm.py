@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Body
 from fastapi.responses import JSONResponse, RedirectResponse
 from services.crm_integration import send_lead_to_crm, initiate_oauth, exchange_code_for_token
 from services.crm_integration.zoho import send_to_zoho
-from models.lead import Lead
+from models.lead import Lead, Company, Note, CustomObject
 from models.oauth import OAuthCredentials
 from utils.oauth import get_oauth_credentials, store_oauth_credentials
 from utils.rate_limiter import rate_limit
@@ -199,3 +199,161 @@ async def create_zoho_lead(
     except Exception as e:
         logger.error(f"Unexpected error creating lead in Zoho CRM: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+    
+
+@router.post("/create-hubspot-company")
+@rate_limit(MAX_REQUESTS_PER_MINUTE)
+async def create_hubspot_company(
+    company: Company = Body(..., description="The company to create in HubSpot"),
+    access_token: str = Query(..., description="OAuth access token for HubSpot authentication")
+):
+    try:
+        logger.info(f"Attempting to create company in HubSpot: {company.name}")
+        result = await create_company_in_hubspot(company, access_token)
+        
+        logger.info(f"Successfully created company in HubSpot: {result.get('id', 'N/A')}")
+        return JSONResponse(
+            content={
+                "message": "Successfully created company in HubSpot",
+                "hubspot_response": result,
+                "company_details": company.dict()
+            },
+            status_code=201
+        )
+    except ValueError as ve:
+        logger.error(f"Validation error: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Unexpected error creating company in HubSpot: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+@router.post("/create-hubspot-note")
+@rate_limit(MAX_REQUESTS_PER_MINUTE)
+async def create_hubspot_note(
+    note: Note = Body(..., description="The note to create in HubSpot"),
+    access_token: str = Query(..., description="OAuth access token for HubSpot authentication")
+):
+    try:
+        logger.info(f"Attempting to create note in HubSpot")
+        result = await create_note_in_hubspot(note, access_token)
+        
+        logger.info(f"Successfully created note in HubSpot: {result.get('id', 'N/A')}")
+        return JSONResponse(
+            content={
+                "message": "Successfully created note in HubSpot",
+                "hubspot_response": result,
+                "note_details": note.dict()
+            },
+            status_code=201
+        )
+    except ValueError as ve:
+        logger.error(f"Validation error: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Unexpected error creating note in HubSpot: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+@router.post("/create-hubspot-custom-object")
+@rate_limit(MAX_REQUESTS_PER_MINUTE)
+async def create_hubspot_custom_object(
+    custom_object: CustomObject = Body(..., description="The custom object to create in HubSpot"),
+    object_type: str = Query(..., description="The type of custom object to create"),
+    access_token: str = Query(..., description="OAuth access token for HubSpot authentication")
+):
+    try:
+        logger.info(f"Attempting to create custom object in HubSpot: {object_type}")
+        result = await create_custom_object_in_hubspot(custom_object, object_type, access_token)
+        
+        logger.info(f"Successfully created custom object in HubSpot: {result.get('id', 'N/A')}")
+        return JSONResponse(
+            content={
+                "message": f"Successfully created custom object '{object_type}' in HubSpot",
+                "hubspot_response": result,
+                "custom_object_details": custom_object.dict()
+            },
+            status_code=201
+        )
+    except ValueError as ve:
+        logger.error(f"Validation error: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Unexpected error creating custom object in HubSpot: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+# Helper functions for creating objects in HubSpot
+
+async def create_company_in_hubspot(company: Company, access_token: str) -> dict:
+    url = f"{HUBSPOT_API_BASE_URL}/crm/v3/objects/companies"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    properties = {
+        "name": company.name,
+        "domain": company.domain,
+        "industry": company.industry,
+        # Add more properties as needed
+    }
+    data = {"properties": properties}
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=data) as response:
+            if response.status == 201:
+                return await response.json()
+            else:
+                error_detail = await response.text()
+                logger.error(f"HubSpot API error: {response.status} - {error_detail}")
+                raise HTTPException(status_code=response.status, detail=f"HubSpot API error: {error_detail}")
+
+async def create_note_in_hubspot(note: Note, access_token: str) -> dict:
+    url = f"{HUBSPOT_API_BASE_URL}/crm/v3/objects/notes"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    properties = {
+        "hs_note_body": note.content,
+        "hs_timestamp": note.timestamp.isoformat(),
+        # Add more properties as needed
+    }
+    data = {
+        "properties": properties,
+        "associations": [
+            {
+                "to": {"id": note.associated_object_id},
+                "types": [{"associationCategory": "HUBSPOT_DEFINED", "associationTypeId": note.association_type}]
+            }
+        ]
+    }
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=data) as response:
+            if response.status == 201:
+                return await response.json()
+            else:
+                error_detail = await response.text()
+                logger.error(f"HubSpot API error: {response.status} - {error_detail}")
+                raise HTTPException(status_code=response.status, detail=f"HubSpot API error: {error_detail}")
+
+async def create_custom_object_in_hubspot(custom_object: CustomObject, object_type: str, access_token: str) -> dict:
+    url = f"{HUBSPOT_API_BASE_URL}/crm/v3/objects/{object_type}"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    data = {"properties": custom_object.properties}
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=data) as response:
+            if response.status == 201:
+                return await response.json()
+            else:
+                error_detail = await response.text()
+                logger.error(f"HubSpot API error: {response.status} - {error_detail}")
+                raise HTTPException(status_code=response.status, detail=f"HubSpot API error: {error_detail}")

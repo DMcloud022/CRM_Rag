@@ -1,22 +1,22 @@
 import logging
 import re
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Header
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Header, Query
 from pydantic import BaseModel, EmailStr, HttpUrl
 from typing import Optional, Dict, Any
 from models.lead import Lead
 from services.image_processing import transcribe_business_card
-from services.public_data import gather_public_data, summarize_public_data
+from services.public_data import gather_public_data, enrich_lead_with_public_data
+from services.crm_integration.hubspot import create_lead_in_hubspot
 
 router = APIRouter()
 
 class BusinessCardScanResponse(BaseModel):
     lead: Lead
-    public_data_summary: str
     message: str
 
 class PublicDataRequest(BaseModel):
     email: Optional[EmailStr] = None
-    linkedin_profile: Optional[HttpUrl] = None
+    # linkedin_profile: Optional[HttpUrl] = None
 
 async def get_api_key(api_key: str = Header(..., description="API Key for authentication")):
     expected_api_key = "test"  # In production, use a secure method to store and retrieve API keys
@@ -26,6 +26,7 @@ async def get_api_key(api_key: str = Header(..., description="API Key for authen
 @router.post("/scan-business-card", response_model=BusinessCardScanResponse)
 async def scan_business_card(
     image: UploadFile = File(...),
+    access_token: str = Query(..., description="OAuth access token for HubSpot authentication"),
     api_key: str = Depends(get_api_key)
 ) -> BusinessCardScanResponse:
     try:
@@ -40,18 +41,23 @@ async def scan_business_card(
         cleaned_data = clean_and_validate_transcription(transcription_result)
         
         logging.info("Gathering public data")
-        public_data = await gather_public_data(cleaned_data.get("email"), cleaned_data.get("linkedin_profile"))
-        
-        logging.info("Summarizing public data")
-        public_data_summary = await summarize_public_data(public_data)
+        public_data = await gather_public_data(
+            cleaned_data.get("email"), 
+            # cleaned_data.get("linkedin_profile")
+        )
         
         logging.info("Creating lead")
-        lead = create_lead(cleaned_data, public_data)
+        lead = create_lead(cleaned_data)
+        
+        logging.info("Enriching lead with public data")
+        enriched_lead = await enrich_lead_with_public_data(lead, public_data)
+        
+        logging.info("Sending lead to HubSpot")
+        hubspot_response = await create_lead_in_hubspot(enriched_lead, access_token)
         
         return BusinessCardScanResponse(
-            lead=lead,
-            public_data_summary=public_data_summary,
-            message="Business card scanned and public data gathered successfully."
+            lead=enriched_lead,
+            message="Business card scanned, public data gathered, and lead created in HubSpot successfully."
         )
 
     except HTTPException as he:
@@ -60,23 +66,6 @@ async def scan_business_card(
     except Exception as e:
         logging.error(f"Error in scan_business_card: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error processing business card: {str(e)}")
-
-@router.post("/gather-public-data", response_model=Dict[str, Any])
-async def gather_public_data_route(
-    request: PublicDataRequest,
-    api_key: str = Depends(get_api_key)
-) -> Dict[str, Any]:
-    try:
-        public_data = await gather_public_data(request.email, request.linkedin_profile)
-        summary = await summarize_public_data(public_data)
-        
-        return {
-            "public_data": public_data,
-            "summary": summary
-        }
-    except Exception as e:
-        logging.error(f"Error in gather_public_data: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error gathering and summarizing public data: {str(e)}")
 
 def clean_and_validate_transcription(transcription: Dict[str, Any]) -> Dict[str, Any]:
     cleaned_data = {
@@ -92,31 +81,31 @@ def clean_and_validate_transcription(transcription: Dict[str, Any]) -> Dict[str,
         cleaned_data["first_name"] = name_parts[0]
         cleaned_data["last_name"] = name_parts[1] if len(name_parts) > 1 else ""
 
-    cleaned_data["name"] = f"{cleaned_data['first_name']} {cleaned_data['last_name']}".strip()
-
     # Handle 'email' field with validation
     email = transcription.get("email", "").strip()
     if email and re.match(r"[^@]+@[^@]+\.[^@]+", email):
         cleaned_data["email"] = email
 
     # Handle other fields
-    for field in ["phone", "company", "address", "job_title", "linkedin_profile", "website"]:
+    for field in ["phone", "company", "job_title", "website", "twitter_handle"]:
         value = transcription.get(field, "").strip()
         if value:
             cleaned_data[field] = value
 
     return cleaned_data
 
-def create_lead(cleaned_data: Dict[str, Any], public_data: Dict[str, Any]) -> Lead:
+def create_lead(cleaned_data: Dict[str, Any]) -> Lead:
     try:
         return Lead(
-            name=cleaned_data.get("name", "Unknown"),
+            first_name=cleaned_data.get("first_name", "Unknown"),
+            last_name=cleaned_data.get("last_name", ""),
             email=cleaned_data.get("email"),
             phone=cleaned_data.get("phone"),
             company=cleaned_data.get("company"),
-            position=cleaned_data.get("job_title"),
-            linkedin_profile=cleaned_data.get("linkedin_profile"),
-            public_data=public_data
+            job_title=cleaned_data.get("job_title"),
+            # linkedin_profile=cleaned_data.get("linkedin_profile"),
+            website=cleaned_data.get("website"),
+            twitter_handle=cleaned_data.get("twitter_handle"),
         )
     except ValueError as ve:
         logging.error(f"Invalid lead data: {str(ve)}")

@@ -6,7 +6,7 @@ from models.oauth import OAuthCredentials
 from .zoho import send_to_zoho, initiate_zoho_oauth, exchange_zoho_code_for_token
 #Uncomment and import other CRM functions as they are implemented
 from .salesforce import send_to_salesforce, initiate_salesforce_oauth, exchange_salesforce_code_for_token
-from .hubspot import send_to_hubspot, initiate_hubspot_oauth, exchange_hubspot_code_for_token
+from .hubspot import create_lead_in_hubspot, initiate_hubspot_oauth, exchange_hubspot_code_for_token
 from .dynamics import send_to_dynamics, initiate_dynamics_oauth, exchange_dynamics_code_for_token
 
 # Type aliases for clarity
@@ -18,7 +18,7 @@ ExchangeCodeFunc = Callable[[str], OAuthCredentials]
 send_lead_funcs: Dict[str, SendLeadFunc] = {
     "zoho": send_to_zoho,
     "salesforce": send_to_salesforce,
-    "hubspot": send_to_hubspot,
+    "hubspot": create_lead_in_hubspot,
     "dynamics": send_to_dynamics,
 }
 
