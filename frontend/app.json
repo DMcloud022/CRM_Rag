@@ -1,30 +1,41 @@
 {
   "expo": {
-    "extra": {
-      "eas": {
-        "projectId": "f15e870b-fff5-4cfe-b6ab-15f7a72f511a"
+    "name": "frontend",
+    "slug": "frontend",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
     },
-    "updates": {
-      "url": "https://u.expo.dev/f15e870b-fff5-4cfe-b6ab-15f7a72f511a"
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
     },
-    "android": {},
-    "ios": {},
-    "plugins": [
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Allow $(CRM_RAG) to access your camera",
-          "microphonePermission": "Allow $(CRM_RAG) to access your microphone",
-          "recordAudioAndroid": true
+    "extra": {
+      "navigation": {
+        "screenOptions": {
+          "headerShown": false
         }
-      ]
-    ]
+      }
+    }
   }
 }
-
-
-
