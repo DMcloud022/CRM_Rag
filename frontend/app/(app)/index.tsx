@@ -1,12 +1,13 @@
 import React from "react";
-import { SafeAreaView, View } from "react-native";
+import { View } from "react-native";
 import ImageBox from "@/components/photo/ImageBox";
 import ActionButton from "@/components/common/ActionButton";
 import { useCamera } from "@/hooks/useCamera";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function App() {
   const { photoUri, handleCameraAction } = useCamera();
-  const redirectTo = "/sign-in";
+  const redirectTo = "/lead-form";
 
   return (
     <SafeAreaView className="flex-1 items-center justify-center bg-white p-4">

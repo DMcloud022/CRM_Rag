@@ -7,10 +7,9 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "react-native-reanimated";
-import { Slot, Stack } from "expo-router";
+import { Slot } from "expo-router";
 import { AppProvider, useAppContext } from "@/global/AppContext";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { StatusBar } from "react-native";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -33,7 +32,7 @@ function RootLayoutInner() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={colorScheme === "dark" ? DefaultTheme : DefaultTheme}>
       <Slot />
     </ThemeProvider>
   );
