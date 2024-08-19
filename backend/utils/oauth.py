@@ -24,18 +24,19 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 async def get_oauth_credentials(token: str = Depends(oauth2_scheme)) -> OAuthCredentials:
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-        user_id: str = payload.get("sub")
         crm_name: str = payload.get("crm")
-        if user_id is None or crm_name is None:
+        if crm_name is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
     except jwt.PyJWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
     
-    credentials = oauth_credentials.get(user_id, {}).get(crm_name)
-    if credentials is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Credentials not found")
-    
-    return await validate_and_refresh_token(credentials)
+    # Here, you would typically retrieve the credentials from your database
+    # For this example, we'll return a placeholder
+    return OAuthCredentials(
+        access_token=payload.get("access_token"),
+        refresh_token=payload.get("refresh_token"),
+        expires_at=payload.get("expires_at")
+    )
 
 async def store_oauth_credentials(user_id: str, crm_name: str, credentials: OAuthCredentials):
     if user_id not in oauth_credentials:

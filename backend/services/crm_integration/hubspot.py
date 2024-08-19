@@ -143,6 +143,29 @@ async def _make_request(method: str, url: str, headers: Dict[str, str], **kwargs
         except aiohttp.ClientError as e:
             logger.error(f"Network error while making {method} request to {url}: {str(e)}")
             raise ConnectionError(f"Network error: {str(e)}")
+async def create_company(company: dict, credentials: OAuthCredentials) -> Dict[str, Any]:
+    url = f"{HUBSPOT_API_BASE_URL}/crm/v3/objects/companies"
+    headers = {
+        "Authorization": f"Bearer {credentials.access_token}",
+        "Content-Type": "application/json",
+    }
+    return await _make_request("POST", url, headers, json={"properties": company})
+
+async def create_note(note: dict, credentials: OAuthCredentials) -> Dict[str, Any]:
+    url = f"{HUBSPOT_API_BASE_URL}/crm/v3/objects/notes"
+    headers = {
+        "Authorization": f"Bearer {credentials.access_token}",
+        "Content-Type": "application/json",
+    }
+    return await _make_request("POST", url, headers, json={"properties": note})
+
+async def create_custom_object(object_type: str, custom_object: dict, credentials: OAuthCredentials) -> Dict[str, Any]:
+    url = f"{HUBSPOT_API_BASE_URL}/crm/v3/objects/{object_type}"
+    headers = {
+        "Authorization": f"Bearer {credentials.access_token}",
+        "Content-Type": "application/json",
+    }
+    return await _make_request("POST", url, headers, json={"properties": custom_object})
 
 async def initiate_hubspot_oauth() -> str:
     scope_string = " ".join(HUBSPOT_SCOPES)
