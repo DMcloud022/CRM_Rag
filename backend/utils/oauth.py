@@ -4,7 +4,9 @@ from models.oauth import OAuthCredentials
 from typing import Dict, Optional
 from datetime import datetime, timedelta
 import jwt
+import httpx
 from config import JWT_SECRET_KEY, JWT_ALGORITHM, TOKEN_EXPIRE_MINUTES
+from config import HUBSPOT_CLIENT_ID, HUBSPOT_CLIENT_SECRET, HUBSPOT_REDIRECT_URI
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -71,11 +73,33 @@ async def get_or_create_credentials(user_id: str, crm_name: str) -> OAuthCredent
 async def handle_oauth_callback(user_id: str, crm_name: str, code: str):
     # This function should be called after receiving the OAuth callback
     # It should exchange the code for tokens and store the credentials
-    # This is a placeholder and should be replaced with actual token exchange logic
-    credentials = OAuthCredentials(
-        access_token="placeholder_access_token",
-        refresh_token="placeholder_refresh_token",
-        expires_at=datetime.utcnow() + timedelta(hours=1)
-    )
+    credentials = await exchange_code_for_token(crm_name, code)
     await store_oauth_credentials(user_id, crm_name, credentials)
     return await create_user_token(user_id, crm_name)
+
+async def exchange_code_for_token(crm_name: str, code: str) -> OAuthCredentials:
+    # Implement the token exchange logic here
+    # This is a placeholder and should be replaced with actual API calls to the CRM's token endpoint
+    if crm_name == "hubspot":
+        # Example for HubSpot
+        token_url = "https://api.hubapi.com/oauth/v1/token"
+        data = {
+            "grant_type": "authorization_code",
+            "client_id": HUBSPOT_CLIENT_ID,
+            "client_secret": HUBSPOT_CLIENT_SECRET,
+            "redirect_uri": HUBSPOT_REDIRECT_URI,
+            "code": code
+        }
+        async with httpx.AsyncClient() as client:
+            response = await client.post(token_url, data=data)
+            if response.status_code == 200:
+                token_data = response.json()
+                return OAuthCredentials(
+                    access_token=token_data["access_token"],
+                    refresh_token=token_data.get("refresh_token"),
+                    expires_at=datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
+                )
+            else:
+                raise HTTPException(status_code=response.status_code, detail="Failed to exchange code for token")
+    else:
+        raise NotImplementedError(f"Token exchange for {crm_name} is not implemented")

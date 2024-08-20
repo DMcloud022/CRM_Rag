@@ -199,3 +199,38 @@ async def create_zoho_lead(
     except Exception as e:
         logger.error(f"Unexpected error creating lead in Zoho CRM: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+    
+    
+@router.get("/oauth/{crm_name}/initiate")
+@rate_limit(MAX_REQUESTS_PER_MINUTE)
+async def oauth_initiate(crm_name: str, request: Request) -> JSONResponse:
+    validate_crm(crm_name)
+
+    try:
+        auth_url = await initiate_oauth(crm_name)
+        logger.info(f"OAuth initiation successful for {crm_name}. Auth URL: {auth_url}")
+        
+        # Instead of redirecting, return the auth_url to the client
+        return JSONResponse(content={"auth_url": auth_url}, status_code=200)
+    except Exception as e:
+        logger.error(f"Error initiating OAuth for {crm_name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error initiating OAuth: {str(e)}")
+
+@router.post("/oauth/{crm_name}/exchange-token")
+@rate_limit(MAX_REQUESTS_PER_MINUTE)
+async def exchange_token(
+    crm_name: str,
+    code: str = Body(..., embed=True),
+    user_id: str = Body(..., embed=True)
+):
+    validate_crm(crm_name)
+
+    try:
+        credentials = await exchange_code_for_token(crm_name, code)
+        await store_oauth_credentials(user_id, crm_name, credentials)
+        
+        logger.info(f"Successfully exchanged code for token for {crm_name}")
+        return JSONResponse(content={"message": "OAuth successful", "access_token": credentials.access_token})
+    except Exception as e:
+        logger.error(f"Error exchanging code for token for {crm_name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error exchanging code for token: {str(e)}")
