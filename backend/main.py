@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import business_card, crm
+from backend.routers import crm, business_card
 
 app = FastAPI(title="Business Card Scanner API")
 
