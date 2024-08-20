@@ -1,6 +1,6 @@
 from typing import Dict, Callable, Any
-from models.lead import Lead
-from models.oauth import OAuthCredentials
+from backend.models.lead import Lead
+from backend.models.oauth import OAuthCredentials
 
 # Import CRM-specific functions
 from .zoho import send_to_zoho, initiate_zoho_oauth, exchange_zoho_code_for_token
