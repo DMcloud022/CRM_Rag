@@ -7,6 +7,7 @@ import jwt
 import httpx
 from config import JWT_SECRET_KEY, JWT_ALGORITHM, TOKEN_EXPIRE_MINUTES
 from config import HUBSPOT_CLIENT_ID, HUBSPOT_CLIENT_SECRET, HUBSPOT_REDIRECT_URI
+import aiohttp
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -39,10 +40,16 @@ async def get_oauth_credentials(token: str = Depends(oauth2_scheme)) -> OAuthCre
     
     return await validate_and_refresh_token(credentials)
 
-async def store_oauth_credentials(user_id: str, crm_name: str, credentials: OAuthCredentials):
-    if user_id not in oauth_credentials:
-        oauth_credentials[user_id] = {}
-    oauth_credentials[user_id][crm_name] = credentials
+# async def store_oauth_credentials(user_id: str, crm_name: str, credentials: OAuthCredentials):
+#     if user_id not in oauth_credentials:
+#         oauth_credentials[user_id] = {}
+#     oauth_credentials[user_id][crm_name] = credentials
+
+async def store_oauth_credentials(crm_name: str, credentials: OAuthCredentials):
+    # In a real application, you would store this in a database
+    # For this example, we'll use an in-memory dictionary
+    global oauth_credentials
+    oauth_credentials[crm_name] = credentials
 
 async def get_user_credentials(user_id: str, crm_name: str) -> Optional[OAuthCredentials]:
     return oauth_credentials.get(user_id, {}).get(crm_name)
@@ -103,3 +110,24 @@ async def exchange_code_for_token(crm_name: str, code: str) -> OAuthCredentials:
                 raise HTTPException(status_code=response.status_code, detail="Failed to exchange code for token")
     else:
         raise NotImplementedError(f"Token exchange for {crm_name} is not implemented")
+    
+async def refresh_hubspot_token(refresh_token: str) -> OAuthCredentials:
+    token_url = "https://api.hubapi.com/oauth/v1/token"
+    data = {
+        "grant_type": "refresh_token",
+        "client_id": HUBSPOT_CLIENT_ID,
+        "client_secret": HUBSPOT_CLIENT_SECRET,
+        "refresh_token": refresh_token
+    }
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(token_url, data=data) as response:
+            if response.status == 200:
+                token_data = await response.json()
+                return OAuthCredentials(
+                    access_token=token_data["access_token"],
+                    refresh_token=token_data.get("refresh_token", refresh_token),
+                    expires_at=int((datetime.utcnow() + timedelta(seconds=token_data.get("expires_in", 3600))).timestamp())
+                )
+            else:
+                raise HTTPException(status_code=response.status, detail="Failed to refresh token")

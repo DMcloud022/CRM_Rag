@@ -13,13 +13,20 @@ HUBSPOT_AUTH_URL = "https://app.hubspot.com/oauth/authorize"
 HUBSPOT_TOKEN_URL = "https://api.hubapi.com/oauth/v1/token"
 
 HUBSPOT_SCOPES = [
+    "crm.objects.companies.read",
+    "crm.objects.companies.write",
     "crm.objects.contacts.read",
     "crm.objects.contacts.write",
-    "crm.schemas.contacts.read",
-    "crm.schemas.contacts.write",
+    "crm.objects.custom.read",
+    "crm.objects.custom.write",
     "crm.objects.leads.read",
     "crm.objects.leads.write",
-    "oauth",
+    "crm.schemas.companies.read",
+    "crm.schemas.companies.write",
+    "crm.schemas.contacts.read",
+    "crm.schemas.contacts.write",
+    "crm.schemas.custom.read",
+    "oauth"
 ]
 
 async def send_to_hubspot(lead: Lead, credentials: OAuthCredentials) -> Dict[str, Any]:
