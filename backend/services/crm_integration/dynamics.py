@@ -1,9 +1,9 @@
 import aiohttp
 import logging
 from typing import Dict, Any
-from models.lead import Lead
-from models.oauth import OAuthCredentials
-from config import DYNAMICS_CLIENT_ID, DYNAMICS_CLIENT_SECRET, DYNAMICS_REDIRECT_URI, DYNAMICS_TENANT_ID
+from backend.models.lead import Lead
+from backend.models.oauth import OAuthCredentials
+from backend.config import DYNAMICS_CLIENT_ID, DYNAMICS_CLIENT_SECRET, DYNAMICS_REDIRECT_URI, DYNAMICS_TENANT_ID
 import time
 
 logger = logging.getLogger(__name__)

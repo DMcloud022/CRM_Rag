@@ -3,9 +3,9 @@ import re
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Header
 from pydantic import BaseModel, EmailStr, HttpUrl
 from typing import Optional, Dict, Any
-from models.lead import Lead
-from services.image_processing import transcribe_business_card
-from services.public_data import gather_public_data, summarize_public_data
+from backend.models.lead import Lead
+from backend.services.image_processing import transcribe_business_card
+from backend.services.public_data import gather_public_data, summarize_public_data
 
 router = APIRouter()
 

@@ -3,7 +3,7 @@ import json
 from typing import Dict, Any
 from fastapi import UploadFile, HTTPException
 from openai import AsyncOpenAI
-from config import OPENAI_API_KEY
+from backend.config import OPENAI_API_KEY
 import logging
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)

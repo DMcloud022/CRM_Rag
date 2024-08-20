@@ -1,17 +1,16 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Body, Header
 from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse
-from services.crm_integration import send_lead_to_crm, initiate_oauth, exchange_code_for_token
-from services.crm_integration.zoho import send_to_zoho
-from models.lead import Lead
-from models.oauth import OAuthCredentials
-from utils.oauth import get_oauth_credentials, store_oauth_credentials, refresh_hubspot_token
-from utils.rate_limiter import rate_limit
-from config import SUPPORTED_CRMS, MAX_REQUESTS_PER_MINUTE
+from backend.services.crm_integration import send_lead_to_crm, initiate_oauth, exchange_code_for_token
+from backend.services.crm_integration.zoho import send_to_zoho
+from backend.models.lead import Lead
+from backend.models.oauth import OAuthCredentials
+from backend.utils.oauth import get_oauth_credentials, store_oauth_credentials, refresh_hubspot_token
+from backend.utils.rate_limiter import rate_limit
+from backend.config import SUPPORTED_CRMS, MAX_REQUESTS_PER_MINUTE, HUBSPOT_CLIENT_ID, HUBSPOT_CLIENT_SECRET, HUBSPOT_REDIRECT_URI
 from starlette.background import BackgroundTask
 import httpx
 import aiohttp
-from config import HUBSPOT_CLIENT_ID, HUBSPOT_CLIENT_SECRET, HUBSPOT_REDIRECT_URI
 from datetime import datetime, timedelta
 from typing import Dict, Any
 

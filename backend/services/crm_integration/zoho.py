@@ -2,9 +2,9 @@ import aiohttp
 import logging
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Body, Query
-from models.lead import Lead
-from models.oauth import OAuthCredentials
-from config import ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REDIRECT_URI
+from backend.models.lead import Lead
+from backend.models.oauth import OAuthCredentials
+from backend.config import ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REDIRECT_URI
 import time
 
 logger = logging.getLogger(__name__)

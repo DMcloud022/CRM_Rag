@@ -1,8 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app  # Assuming your FastAPI app is in main.py
-from models.lead import Lead
-from models.oauth import OAuthCredentials
+from backend.main import app  # Assuming your FastAPI app is in main.py
+from backend.models.lead import Lead
+from backend.models.oauth import OAuthCredentials
 
 client = TestClient(app)
 

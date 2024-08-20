@@ -1,7 +1,7 @@
 import aiohttp
 import asyncio
 from typing import Optional, Dict, Any
-from config import SERPER_API_KEY, PERPLEXITY_API_KEY, OPENAI_API_KEY
+from backend.config import SERPER_API_KEY, PERPLEXITY_API_KEY, OPENAI_API_KEY
 import json
 from openai import AsyncOpenAI
 

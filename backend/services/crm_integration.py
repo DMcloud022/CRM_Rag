@@ -1,12 +1,12 @@
 import logging
 from typing import Dict, Any, Callable
-from models.lead import Lead
-from models.oauth import OAuthCredentials
-from config import SUPPORTED_CRMS
-from services.crm_integration.zoho import send_to_zoho, initiate_zoho_oauth, exchange_zoho_code_for_token
-from services.crm_integration.hubspot import send_to_hubspot, initiate_hubspot_oauth, exchange_hubspot_code_for_token
-from services.crm_integration.salesforce import send_to_salesforce, initiate_salesforce_oauth, exchange_salesforce_code_for_token
-from services.crm_integration.dynamics import send_to_dynamics, initiate_dynamics_oauth, exchange_dynamics_code_for_token
+from backend.models.lead import Lead
+from backend.models.oauth import OAuthCredentials
+from backend.config import SUPPORTED_CRMS
+from backend.services.crm_integration.zoho import send_to_zoho, initiate_zoho_oauth, exchange_zoho_code_for_token
+from backend.services.crm_integration.hubspot import send_to_hubspot, initiate_hubspot_oauth, exchange_hubspot_code_for_token
+from backend.services.crm_integration.salesforce import send_to_salesforce, initiate_salesforce_oauth, exchange_salesforce_code_for_token
+from backend.services.crm_integration.dynamics import send_to_dynamics, initiate_dynamics_oauth, exchange_dynamics_code_for_token
 # Import other CRM-specific functions as needed
 
 logger = logging.getLogger(__name__)

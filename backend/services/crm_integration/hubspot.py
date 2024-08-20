@@ -1,9 +1,9 @@
 import aiohttp
 import logging
 from typing import Dict, Any, List
-from models.lead import Lead
-from models.oauth import OAuthCredentials
-from config import HUBSPOT_CLIENT_ID, HUBSPOT_CLIENT_SECRET, HUBSPOT_REDIRECT_URI
+from backend.models.lead import Lead
+from backend.models.oauth import OAuthCredentials
+from backend.config import HUBSPOT_CLIENT_ID, HUBSPOT_CLIENT_SECRET, HUBSPOT_REDIRECT_URI
 import time
 
 logger = logging.getLogger(__name__)

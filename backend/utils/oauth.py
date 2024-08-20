@@ -1,12 +1,11 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from models.oauth import OAuthCredentials
+from backend.models.oauth import OAuthCredentials
 from typing import Dict, Optional
 from datetime import datetime, timedelta
 import jwt
 import httpx
-from config import JWT_SECRET_KEY, JWT_ALGORITHM, TOKEN_EXPIRE_MINUTES
-from config import HUBSPOT_CLIENT_ID, HUBSPOT_CLIENT_SECRET, HUBSPOT_REDIRECT_URI
+from backend.config import JWT_SECRET_KEY, JWT_ALGORITHM, TOKEN_EXPIRE_MINUTES, HUBSPOT_CLIENT_ID, HUBSPOT_CLIENT_SECRET, HUBSPOT_REDIRECT_URI
 import aiohttp
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")

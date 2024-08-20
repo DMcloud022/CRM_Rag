@@ -1,9 +1,9 @@
 import aiohttp
 import logging
 from typing import Dict, Any
-from models.lead import Lead
-from models.oauth import OAuthCredentials
-from config import SALESFORCE_CLIENT_ID, SALESFORCE_CLIENT_SECRET, SALESFORCE_REDIRECT_URI
+from backend.models.lead import Lead
+from backend.models.oauth import OAuthCredentials
+from backend.config import SALESFORCE_CLIENT_ID, SALESFORCE_CLIENT_SECRET, SALESFORCE_REDIRECT_URI
 import time
 
 logger = logging.getLogger(__name__)
