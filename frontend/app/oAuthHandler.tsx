@@ -21,6 +21,7 @@ const OAuthHandler: React.FC<OAuthHandlerProps> = ({ crmName, onSuccess, onError
   }, []);
 
   const handlePress = async () => {
+    console.log("entered");
     if (!apiBaseUrl) {
       Alert.alert('Error', 'API URL not available. Please try again.');
       return;
@@ -32,7 +33,7 @@ const OAuthHandler: React.FC<OAuthHandlerProps> = ({ crmName, onSuccess, onError
       const redirectUrl = Linking.createURL('oauth-callback');
       console.log('Redirect URL:', redirectUrl);
   
-      const authUrl = `http://localhost:8000/oauth/${crmName}/initiate?redirect_uri=${encodeURIComponent(redirectUrl)}`;
+      const authUrl = `http://localhost:8000/oauth/${crmName}/initiate`;
       console.log('Auth URL:', authUrl);
   
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
