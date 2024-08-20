@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # General settings
-SUPPORTED_CRMS = ['salesforce', 'hubspot', 'zoho', 'dynamic']  # Add all supported CRMs
+SUPPORTED_CRMS = ['salesforce', 'hubspot',
+                  'zoho', 'dynamic']  # Add all supported CRMs
 MAX_REQUESTS_PER_MINUTE = 60
 
 # API keys
@@ -50,7 +51,11 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # Security settings
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:8000").split(",")
+ALLOWED_ORIGINS = os.environ.get(
+    "ALLOWED_ORIGINS", "http://localhost:19006,http://localhost:19000,exp://192.168.1.13:19000").split(",")
+CORS_ORIGINS = os.getenv(
+    "CORS_ORIGINS", "http://localhost,http://localhost:8000").split(",")
+
 
 def get_crm_config(crm_name: str) -> dict:
     """

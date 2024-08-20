@@ -1,28 +1,37 @@
-import React from "react";
-import { TouchableOpacity, Image, Text } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useAppContext } from "@/global/AppContext";
-import { router } from "expo-router";
-import LoginButton from "@/components/common/LoginButton";
+import React from 'react';
+import { View, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import OAuthHandler from './oAuthHandler';
 
-// sign in via hubspot -> camera app -> business card analyzer -> generate lead -> receive lead data -> coconfirm user -> sesend hubspot lead
-export default function SignIn() {
-  const { user, setUser } = useAppContext();
+export default function SignInScreen() {
+  const navigation = useNavigation();
 
-  const handleSignIn = async () => {
-    setUser("John");
-    console.log(user);
-    router.replace("/(app)/");
+  const handleOAuthSuccess = () => {
+    // navigation.navigate('Home');
+  };
+
+  const handleOAuthError = (error: string) => {
+    console.error('OAuth error:', error);
+    // You might want to show an error message to the user here
   };
 
   return (
-    <SafeAreaView className="flex-1 items-center justify-center bg-white">
-      <LoginButton
-        providerName="HubSpot"
-        backgroundColor="bg-blue-600"
-        logoSource={require("@/assets/images/HSLogo2.png")}
-        onPress={handleSignIn}
-      />
+    <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ fontSize: 24, marginBottom: 20 }}>Business Card Analyzer</Text>
+      <View style={{ width: '80%' }}>
+        <OAuthHandler
+          crmName="hubspot"
+          onSuccess={handleOAuthSuccess}
+          onError={handleOAuthError}
+        />
+        <View style={{ height: 20 }} />
+        <OAuthHandler
+          crmName="zoho"
+          onSuccess={handleOAuthSuccess}
+          onError={handleOAuthError}
+        />
+      </View>
     </SafeAreaView>
   );
 }
