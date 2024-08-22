@@ -33,7 +33,7 @@ const OAuthHandler: React.FC<OAuthHandlerProps> = ({ crmName, onSuccess, onError
       const redirectUrl = Linking.createURL('oauth-callback');
       console.log('Redirect URL:', redirectUrl);
   
-      const authUrl = `http://localhost:8000/oauth/${crmName}/initiate`;
+      const authUrl = `http://crm-rag.onrender.com/oauth/${crmName}/initiate`;
       console.log('Auth URL:', authUrl);
   
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);

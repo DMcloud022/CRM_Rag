@@ -13,6 +13,7 @@ import httpx
 import aiohttp
 from datetime import datetime, timedelta
 from typing import Dict, Any
+from urllib.parse import urlencode
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -336,52 +337,31 @@ async def auth_callback(code: str = Query(...), state: str = Query(None)):
                         expires_at=expires_at
                     ))
 
-                    # Return HTML that closes the window and passes the token to the parent
-                    return HTMLResponse(content=f"""
-                        <html>
-                            <body>
-                                <script>
-                                    window.opener.postMessage({{
-                                        type: 'HUBSPOT_AUTH_SUCCESS',
-                                        access_token: '{access_token}'
-                                    }}, '*');
-                                    window.close();
-                                </script>
-                            </body>
-                        </html>
-                    """)
+                    # Redirect to React Native app with access token
+                    redirect_params = urlencode({
+                        'access_token': access_token,
+                        'token_type': token_data.get('token_type', 'bearer'),
+                        'expires_in': expires_in
+                    })
+                    redirect_url = f"exp://192.168.1.13:8081/--/oauth-callback?{redirect_params}"
+                    return RedirectResponse(url=redirect_url)
                 else:
                     error_detail = await response.text()
-                    logger.error(
-                        f"Error exchanging code for token: {error_detail}")
-                    return HTMLResponse(content=f"""
-                        <html>
-                            <body>
-                                <script>
-                                    window.opener.postMessage({{
-                                        type: 'HUBSPOT_AUTH_ERROR',
-                                        error: 'Error exchanging code for token'
-                                    }}, '*');
-                                    window.close();
-                                </script>
-                            </body>
-                        </html>
-                    """)
+                    logger.error(f"Error exchanging code for token: {error_detail}")
+                    # Redirect to React Native app with error
+                    error_params = urlencode({
+                        'error': 'Error exchanging code for token'
+                    })
+                    error_redirect_url = f"exp://192.168.1.13:8081/--/oauth-callback?{error_params}"
+                    return RedirectResponse(url=error_redirect_url)
     except Exception as e:
         logger.error(f"Error in auth callback: {str(e)}")
-        return HTMLResponse(content=f"""
-            <html>
-                <body>
-                    <script>
-                        window.opener.postMessage({{
-                            type: 'HUBSPOT_AUTH_ERROR',
-                            error: 'Unexpected error during authentication'
-                        }}, '*');
-                        window.close();
-                    </script>
-                </body>
-            </html>
-        """)
+        # Redirect to React Native app with error
+        error_params = urlencode({
+            'error': 'Unexpected error during authentication'
+        })
+        error_redirect_url = f"exp://192.168.1.13:8081/--/oauth-callback?{error_params}"
+        return RedirectResponse(url=error_redirect_url)
 
 
 @router.post("/oauth/{crm_name}/exchange-token")
