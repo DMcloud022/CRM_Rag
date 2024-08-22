@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
 import { Button, Alert } from 'react-native';
 import { useOAuth } from '@/hooks/useOAuth';
 import { getApiBaseUrl } from '@/utils/networkUtils';
@@ -21,32 +20,25 @@ const OAuthHandler: React.FC<OAuthHandlerProps> = ({ crmName, onSuccess, onError
   }, []);
 
   const handlePress = async () => {
-    console.log("entered");
     if (!apiBaseUrl) {
       Alert.alert('Error', 'API URL not available. Please try again.');
       return;
     }
-  
+
     try {
-      console.log('API Base URL:', apiBaseUrl);
-  
-      const redirectUrl = Linking.createURL('oauth-callback');
-      console.log('Redirect URL:', redirectUrl);
-  
+      const redirectUrl = 'exp://192.168.68.103:8081/oauth-callback'; // Ensure this matches your configuration
       const authUrl = `http://crm-rag.onrender.com/oauth/${crmName}/initiate`;
-      console.log('Auth URL:', authUrl);
-  
+
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
-      console.log('Result:', result);
-  
+
       if (result.type === 'success' && result.url) {
         const url = new URL(result.url);
-        const code = url.searchParams.get('code');
-        console.log('Authorization Code:', code);
-  
+        const code = url.searchParams.get('access_token'); // Updated to access_token as per your backend
+
         if (code) {
-          const { access_token, refresh_token, expires_at } = await exchangeCodeForTokens(apiBaseUrl, code, crmName);
-          if (access_token && refresh_token && expires_at) {
+          const { access_token, refresh_token, expires_in } = await exchangeCodeForTokens(apiBaseUrl, code, crmName);
+          if (access_token && refresh_token && expires_in) {
+            const expires_at = Math.floor(Date.now() / 1000) + expires_in; // Adjusted for expiration time
             await handleOAuthCallback(access_token, refresh_token, expires_at, crmName);
             onSuccess();
           } else {
@@ -71,13 +63,11 @@ const OAuthHandler: React.FC<OAuthHandlerProps> = ({ crmName, onSuccess, onError
       }
     } catch (error) {
       console.error('OAuth Error:', error);
-      // Alert.alert('Error', error.message);
-      // onError(error.message);
+      Alert.alert('Error', 'An unexpected error occurred during OAuth.');
+      onError('An unexpected error occurred during OAuth.');
     }
   };
-  
-  
-  
+
   return (
     <Button 
       title={`Sign in with ${crmName}`} 

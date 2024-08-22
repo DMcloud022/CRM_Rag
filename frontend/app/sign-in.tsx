@@ -1,31 +1,29 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import OAuthHandler from './oAuthHandler';
 
 export default function SignInScreen() {
-  const navigation = useNavigation();
-
   const handleOAuthSuccess = () => {
+    // Navigation or other actions on successful OAuth
     // navigation.navigate('Home');
   };
 
   const handleOAuthError = (error: string) => {
     console.error('OAuth error:', error);
-    // You might want to show an error message to the user here
+    // Show an error message to the user here if needed
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text style={{ fontSize: 24, marginBottom: 20 }}>Business Card Analyzer</Text>
-      <View style={{ width: '80%' }}>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.title}>Business Card Analyzer</Text>
+      <View style={styles.buttonContainer}>
         <OAuthHandler
           crmName="hubspot"
           onSuccess={handleOAuthSuccess}
           onError={handleOAuthError}
         />
-        <View style={{ height: 20 }} />
+        <View style={styles.spacing} />
         <OAuthHandler
           crmName="zoho"
           onSuccess={handleOAuthSuccess}
@@ -35,3 +33,21 @@ export default function SignInScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    marginBottom: 20,
+  },
+  buttonContainer: {
+    width: '80%',
+  },
+  spacing: {
+    height: 20,
+  },
+});
