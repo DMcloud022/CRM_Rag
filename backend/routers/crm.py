@@ -288,22 +288,98 @@ async def create_zoho_lead(
         raise HTTPException(
             status_code=500, detail=f"Unexpected error: {str(e)}")
 
+# @router.get("/oauth/{crm_name}/initiate")
+# @rate_limit(MAX_REQUESTS_PER_MINUTE)
+# async def oauth_initiate(crm_name: str):
+#     validate_crm(crm_name)
+
+#     try:
+#         auth_url = await initiate_oauth(crm_name)
+#         logger.info(f"OAuth initiation successful for {crm_name}. Redirecting to: {auth_url}")
+#         return RedirectResponse(url=auth_url)
+#     except Exception as e:
+#         logger.error(f"Error initiating OAuth for {crm_name}: {str(e)}")
+#         raise HTTPException(
+#             status_code=500, detail=f"Error initiating OAuth: {str(e)}"
+#         )
+
+
+# @router.get("/auth-callback")
+# async def auth_callback(code: str = Query(...)):
+#     try:
+#         token_url = "https://api.hubapi.com/oauth/v1/token"
+#         data = {
+#             "grant_type": "authorization_code",
+#             "client_id": HUBSPOT_CLIENT_ID,
+#             "client_secret": HUBSPOT_CLIENT_SECRET,
+#             "redirect_uri": HUBSPOT_REDIRECT_URI,
+#             "code": code,
+#         }
+
+#         async with aiohttp.ClientSession() as session:
+#             async with session.post(token_url, data=data) as response:
+#                 if response.status == 200:
+#                     token_data = await response.json()
+#                     access_token = token_data["access_token"]
+#                     refresh_token = token_data.get("refresh_token")
+#                     expires_in = token_data.get("expires_in", 3600)
+
+#                     expires_at = int(
+#                         (datetime.utcnow() + timedelta(seconds=expires_in)).timestamp()
+#                     )
+
+#                     await store_oauth_credentials("hubspot", OAuthCredentials(
+#                         access_token=access_token,
+#                         refresh_token=refresh_token,
+#                         expires_at=expires_at
+#                     ))
+
+#                     redirect_params = urlencode({
+#                         'access_token': access_token,
+#                         'token_type': token_data.get('token_type', 'bearer'),
+#                         'expires_in': expires_in
+#                     })
+#                     redirect_url = f"exp://192.168.68.103:8081/oauth-callback?{redirect_params}"
+#                     return RedirectResponse(url=redirect_url)
+#                 else:
+#                     error_detail = await response.text()
+#                     logger.error(f"Error exchanging code for token: {error_detail}")
+#                     error_params = urlencode({
+#                         'error': 'Error exchanging code for token'
+#                     })
+#                     error_redirect_url = f"exp://192.168.68.103:8081/oauth-callback?{error_params}"
+#                     return RedirectResponse(url=error_redirect_url)
+#     except Exception as e:
+#         logger.error(f"Error in auth callback: {str(e)}")
+#         error_params = urlencode({
+#             'error': 'Unexpected error during authentication'
+#         })
+#         error_redirect_url = f"exp://192.168.68.103:8081/oauth-callback?{error_params}"
+#         return RedirectResponse(url=error_redirect_url)
+
 @router.get("/oauth/{crm_name}/initiate")
 @rate_limit(MAX_REQUESTS_PER_MINUTE)
-async def oauth_initiate(crm_name: str):
+async def oauth_initiate(crm_name: str, request: Request):
     validate_crm(crm_name)
 
     try:
         auth_url = await initiate_oauth(crm_name)
         logger.info(f"OAuth initiation successful for {crm_name}. Redirecting to: {auth_url}")
-        return RedirectResponse(url=auth_url)
+        
+        # Extract the code from the query parameters if it exists
+        code = request.query_params.get('code')
+        
+        # Construct the redirect URL with the code
+        redirect_params = urlencode({'code': code}) if code else ''
+        redirect_url = f"http://crm-rag.onrender.com/oauth/{crm_name}/initiate?{redirect_params}"
+        
+        return RedirectResponse(url=redirect_url)
     except Exception as e:
         logger.error(f"Error initiating OAuth for {crm_name}: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Error initiating OAuth: {str(e)}"
         )
-
-
+        
 @router.get("/auth-callback")
 async def auth_callback(code: str = Query(...)):
     try:
@@ -335,11 +411,12 @@ async def auth_callback(code: str = Query(...)):
                     ))
 
                     redirect_params = urlencode({
+                        'code': code,
                         'access_token': access_token,
-                        'token_type': token_data.get('token_type', 'bearer'),
+                        'refresh_token': refresh_token,
                         'expires_in': expires_in
                     })
-                    redirect_url = f"exp://192.168.68.103:8081/oauth-callback?{redirect_params}"
+                    redirect_url = f"http://crm-rag.onrender.com/oauth/hubspot/initiate?{redirect_params}"
                     return RedirectResponse(url=redirect_url)
                 else:
                     error_detail = await response.text()
@@ -347,16 +424,15 @@ async def auth_callback(code: str = Query(...)):
                     error_params = urlencode({
                         'error': 'Error exchanging code for token'
                     })
-                    error_redirect_url = f"exp://192.168.68.103:8081/oauth-callback?{error_params}"
+                    error_redirect_url = f"http://crm-rag.onrender.com/oauth/hubspot/initiate?{error_params}"
                     return RedirectResponse(url=error_redirect_url)
     except Exception as e:
         logger.error(f"Error in auth callback: {str(e)}")
         error_params = urlencode({
             'error': 'Unexpected error during authentication'
         })
-        error_redirect_url = f"exp://192.168.68.103:8081/oauth-callback?{error_params}"
+        error_redirect_url = f"http://crm-rag.onrender.com/oauth/hubspot/initiate?{error_params}"
         return RedirectResponse(url=error_redirect_url)
-
 
 @router.post("/oauth/{crm_name}/exchange-token")
 @rate_limit(MAX_REQUESTS_PER_MINUTE)

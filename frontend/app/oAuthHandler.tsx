@@ -4,6 +4,7 @@ import { Button, Alert } from 'react-native';
 import { useOAuth } from '@/hooks/useOAuth';
 import { getApiBaseUrl } from '@/utils/networkUtils';
 import { exchangeCodeForTokens } from '@/api/backend';
+import * as Linking from 'expo-linking';
 
 interface OAuthHandlerProps {
   crmName: string;
@@ -26,29 +27,31 @@ const OAuthHandler: React.FC<OAuthHandlerProps> = ({ crmName, onSuccess, onError
     }
 
     try {
-      const redirectUrl = 'exp://192.168.68.103:8081/oauth-callback'; // Ensure this matches your configuration
-      const authUrl = `http://crm-rag.onrender.com/oauth/${crmName}/initiate`;
+      console.log('API Base URL:', apiBaseUrl);
+  
+      const redirectUrl = Linking.createURL('oauth-callback');
+      console.log('Redirect URL:', redirectUrl);
+  
+      const param = new URLSearchParams();
+      param.set("redirectUrl", redirectUrl);
+      const authUrl = `http://crm-rag.onrender.com/oauth/${crmName}/initiate?=${param}`; 
+      console.log('Auth URL:', authUrl);
 
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
 
       if (result.type === 'success' && result.url) {
         const url = new URL(result.url);
-        const code = url.searchParams.get('access_token'); // Updated to access_token as per your backend
+        const code = url.searchParams.get('code');
+        const access_token = url.searchParams.get('access_token');
+        const refresh_token = url.searchParams.get('refresh_token');
+        const expires_in = url.searchParams.get('expires_in');
 
-        if (code) {
-          const { access_token, refresh_token, expires_in } = await exchangeCodeForTokens(apiBaseUrl, code, crmName);
-          if (access_token && refresh_token && expires_in) {
-            const expires_at = Math.floor(Date.now() / 1000) + expires_in; // Adjusted for expiration time
-            await handleOAuthCallback(access_token, refresh_token, expires_at, crmName);
-            onSuccess();
-          } else {
-            const error = 'Missing tokens after exchange.';
-            console.error(error);
-            Alert.alert('Error', error);
-            onError(error);
-          }
+        if (code && access_token && refresh_token && expires_in) {
+          const expires_at = Math.floor(Date.now() / 1000) + parseInt(expires_in);
+          await handleOAuthCallback(access_token, refresh_token, expires_at, crmName);
+          onSuccess();
         } else {
-          const error = 'Authorization code missing in URL.';
+          const error = 'Missing tokens or code in URL.';
           console.error(error);
           Alert.alert('Error', error);
           onError(error);
