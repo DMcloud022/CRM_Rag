@@ -366,22 +366,22 @@ async def oauth_initiate(crm_name: str, request: Request):
         auth_url = await initiate_oauth(crm_name)
         logger.info(f"OAuth initiation successful for {crm_name}. Redirecting to: {auth_url}")
         
-        # Extract the code from the query parameters if it exists
-        code = request.query_params.get('code')
+        # Extract any additional parameters from the request
+        params = dict(request.query_params)
         
-        # Construct the redirect URL with the code
-        redirect_params = urlencode({'code': code}) if code else ''
-        redirect_url = f"http://crm-rag.onrender.com/oauth/{crm_name}/initiate?{redirect_params}"
+        # Add these parameters to the auth_url
+        if params:
+            auth_url += f"&{urlencode(params)}"
         
-        return RedirectResponse(url=redirect_url)
+        return RedirectResponse(url=auth_url)
     except Exception as e:
         logger.error(f"Error initiating OAuth for {crm_name}: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Error initiating OAuth: {str(e)}"
         )
-        
+
 @router.get("/auth-callback")
-async def auth_callback(code: str = Query(...)):
+async def auth_callback(code: str = Query(...), crm_name: str = Query(...)):
     try:
         token_url = "https://api.hubapi.com/oauth/v1/token"
         data = {
@@ -404,7 +404,7 @@ async def auth_callback(code: str = Query(...)):
                         (datetime.utcnow() + timedelta(seconds=expires_in)).timestamp()
                     )
 
-                    await store_oauth_credentials("hubspot", OAuthCredentials(
+                    await store_oauth_credentials(crm_name, OAuthCredentials(
                         access_token=access_token,
                         refresh_token=refresh_token,
                         expires_at=expires_at
@@ -416,23 +416,67 @@ async def auth_callback(code: str = Query(...)):
                         'refresh_token': refresh_token,
                         'expires_in': expires_in
                     })
-                    redirect_url = f"http://crm-rag.onrender.com/oauth/hubspot/initiate?{redirect_params}"
-                    return RedirectResponse(url=redirect_url)
+                    
+                    # HTML response that will close the web view and redirect to the mobile app
+                    html_content = f"""
+                    <html>
+                        <head>
+                            <script>
+                                window.onload = function() {{
+                                    window.location.href = "http://crm-rag.onrender.com/oauth/{crm_name}/initiate?{redirect_params}";
+                                    window.close();
+                                }}
+                            </script>
+                        </head>
+                        <body>
+                            <p>Authentication successful. This window will close automatically.</p>
+                        </body>
+                    </html>
+                    """
+                    return HTMLResponse(content=html_content, status_code=200)
                 else:
                     error_detail = await response.text()
                     logger.error(f"Error exchanging code for token: {error_detail}")
                     error_params = urlencode({
                         'error': 'Error exchanging code for token'
                     })
-                    error_redirect_url = f"http://crm-rag.onrender.com/oauth/hubspot/initiate?{error_params}"
-                    return RedirectResponse(url=error_redirect_url)
+                    html_content = f"""
+                    <html>
+                        <head>
+                            <script>
+                                window.onload = function() {{
+                                    window.location.href = "http://crm-rag.onrender.com/oauth/{crm_name}/initiate?{error_params}";
+                                    window.close();
+                                }}
+                            </script>
+                        </head>
+                        <body>
+                            <p>Authentication failed. This window will close automatically.</p>
+                        </body>
+                    </html>
+                    """
+                    return HTMLResponse(content=html_content, status_code=400)
     except Exception as e:
         logger.error(f"Error in auth callback: {str(e)}")
         error_params = urlencode({
             'error': 'Unexpected error during authentication'
         })
-        error_redirect_url = f"http://crm-rag.onrender.com/oauth/hubspot/initiate?{error_params}"
-        return RedirectResponse(url=error_redirect_url)
+        html_content = f"""
+        <html>
+            <head>
+                <script>
+                    window.onload = function() {{
+                        window.location.href = "http://crm-rag.onrender.com/oauth/{crm_name}/initiate?{error_params}";
+                        window.close();
+                    }}
+                </script>
+            </head>
+            <body>
+                <p>An unexpected error occurred. This window will close automatically.</p>
+            </body>
+        </html>
+        """
+        return HTMLResponse(content=html_content, status_code=500)
 
 @router.post("/oauth/{crm_name}/exchange-token")
 @rate_limit(MAX_REQUESTS_PER_MINUTE)
