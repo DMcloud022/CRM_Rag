@@ -357,29 +357,44 @@ async def create_zoho_lead(
 #         error_redirect_url = f"exp://192.168.68.103:8081/oauth-callback?{error_params}"
 #         return RedirectResponse(url=error_redirect_url)
 
+# @router.get("/oauth/{crm_name}/initiate")
+# @rate_limit(MAX_REQUESTS_PER_MINUTE)
+# async def oauth_initiate(crm_name: str, request: Request):
+#     validate_crm(crm_name)
+
+#     try:
+#         auth_url = await initiate_oauth(crm_name)
+#         logger.info(f"OAuth initiation successful for {crm_name}. Redirecting to: {auth_url}")
+        
+#         # Extract any additional parameters from the request
+#         params = dict(request.query_params)
+        
+#         # Add these parameters to the auth_url
+#         if params:
+#             auth_url += f"&{urlencode(params)}"
+        
+#         return RedirectResponse(url=auth_url)
+#     except Exception as e:
+#         logger.error(f"Error initiating OAuth for {crm_name}: {str(e)}")
+#         raise HTTPException(
+#             status_code=500, detail=f"Error initiating OAuth: {str(e)}"
+#         )
+
 @router.get("/oauth/{crm_name}/initiate")
 @rate_limit(MAX_REQUESTS_PER_MINUTE)
-async def oauth_initiate(crm_name: str, request: Request):
+async def oauth_initiate(crm_name: str, redirect_uri: str = Query(...)):
     validate_crm(crm_name)
 
     try:
-        auth_url = await initiate_oauth(crm_name)
+        auth_url = await initiate_oauth(crm_name, redirect_uri)
         logger.info(f"OAuth initiation successful for {crm_name}. Redirecting to: {auth_url}")
-        
-        # Extract any additional parameters from the request
-        params = dict(request.query_params)
-        
-        # Add these parameters to the auth_url
-        if params:
-            auth_url += f"&{urlencode(params)}"
-        
         return RedirectResponse(url=auth_url)
     except Exception as e:
         logger.error(f"Error initiating OAuth for {crm_name}: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Error initiating OAuth: {str(e)}"
         )
-
+        
 @router.get("/auth-callback")
 async def auth_callback(code: str = Query(...), crm_name: str = Query(...)):
     try:
